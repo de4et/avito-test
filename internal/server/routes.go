@@ -23,9 +23,7 @@ type server struct {
 	*handlers.PullRequestHandler
 }
 
-type tmp struct{}
-
-func RegisterRoutes(teamService *service.TeamService, userService *service.UserService) http.Handler {
+func RegisterRoutes(teamService *service.TeamService, userService *service.UserService, prService *service.PullRequestService) http.Handler {
 	swagger, err := openapi3.NewLoader().LoadFromData(openapiSchema)
 	if err != nil {
 		panic("couldn't load openapiSchema")
@@ -35,14 +33,14 @@ func RegisterRoutes(teamService *service.TeamService, userService *service.UserS
 
 	r.Use(gin.Recovery())
 	r.Use(middlewares.LogHandler())
-	r.Use(middlewares.ErrorHandler())
 	r.Use(middleware.OapiRequestValidator(swagger))
+	r.Use(middlewares.ErrorHandler())
 
 	api.RegisterHandlers(r, api.NewStrictHandler(
 		server{
 			UserHandler:        handlers.NewUserHandler(userService),
 			TeamHandler:        handlers.NewTeamHandler(teamService),
-			PullRequestHandler: handlers.NewPullRequestHandler(tmp{}),
+			PullRequestHandler: handlers.NewPullRequestHandler(prService),
 		},
 		[]api.StrictMiddlewareFunc{},
 	))

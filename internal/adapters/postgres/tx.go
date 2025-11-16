@@ -6,8 +6,18 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func WithTx(ctx context.Context, db *sqlx.DB, fn func(tx *sqlx.Tx) error) error {
-	tx, err := db.BeginTxx(ctx, nil)
+type PostgresqlTransactor struct {
+	client *sqlx.DB
+}
+
+func NewPostgresqlTransactor(client *sqlx.DB) *PostgresqlTransactor {
+	return &PostgresqlTransactor{
+		client: client,
+	}
+}
+
+func (tr *PostgresqlTransactor) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
+	tx, err := tr.client.BeginTxx(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -19,10 +29,23 @@ func WithTx(ctx context.Context, db *sqlx.DB, fn func(tx *sqlx.Tx) error) error 
 		}
 	}()
 
-	if err := fn(tx); err != nil {
+	if err := fn(injectTx(ctx, tx)); err != nil {
 		_ = tx.Rollback()
 		return err
 	}
 
 	return tx.Commit()
+}
+
+type txKey struct{}
+
+func injectTx(ctx context.Context, tx *sqlx.Tx) context.Context {
+	return context.WithValue(ctx, txKey{}, tx)
+}
+
+func extractTx(ctx context.Context) *sqlx.Tx {
+	if tx, ok := ctx.Value(txKey{}).(*sqlx.Tx); ok {
+		return tx
+	}
+	return nil
 }

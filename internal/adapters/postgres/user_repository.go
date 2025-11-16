@@ -15,13 +15,16 @@ import (
 //go:embed queries/user_set_active.sql
 var userSetActiveQuery string
 
+//go:embed queries/user_exists.sql
+var userExistsQuery string
+
 type PostgresqlUserRepository struct {
-	client *sqlx.DB
+	client *TxClient
 }
 
 func NewPostgresqlUserRepository(client *sqlx.DB) *PostgresqlUserRepository {
 	return &PostgresqlUserRepository{
-		client: client,
+		client: NewTxClient(client),
 	}
 }
 
@@ -49,4 +52,18 @@ func (rep *PostgresqlUserRepository) SetActive(ctx context.Context, userID strin
 		UserId:   user.UserId,
 		Username: user.Username,
 	}, nil
+}
+
+func (rep *PostgresqlUserRepository) IsExists(ctx context.Context, id string) (bool, error) {
+	var exists int
+
+	err := rep.client.GetContext(ctx, &exists, userExistsQuery, id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	return true, nil
 }

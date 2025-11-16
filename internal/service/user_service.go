@@ -13,6 +13,7 @@ var (
 
 type userRepository interface {
 	SetActive(context.Context, string, bool) (domain.User, error)
+	IsExists(context.Context, string) (bool, error)
 }
 
 type UserService struct {

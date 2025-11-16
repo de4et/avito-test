@@ -21,11 +21,11 @@ func NewUserHandler(svc *service.UserService) *UserHandler {
 	}
 }
 
+// TODO:
 func (h *UserHandler) GetUsersGetReview(ctx context.Context, request api.GetUsersGetReviewRequestObject) (api.GetUsersGetReviewResponseObject, error) {
 	return api.GetUsersGetReview200JSONResponse{}, nil
 }
 
-// TODO:
 func (h *UserHandler) PostUsersSetIsActive(ctx context.Context, request api.PostUsersSetIsActiveRequestObject) (api.PostUsersSetIsActiveResponseObject, error) {
 	ctx = logger.WithContext(ctx, "user_id", request.Body.UserId)
 	ctx = logger.WithContext(ctx, "is_active", request.Body.IsActive)

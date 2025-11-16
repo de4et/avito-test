@@ -21,14 +21,14 @@ import (
 func main() {
 	logger.SetupLog("")
 
-	port, err := strconv.Atoi(os.Getenv("DB_PORT"))
+	dbPort, err := strconv.Atoi(os.Getenv("DB_PORT"))
 	if err != nil {
 		panic("DB_PORT MUST be integer")
 	}
 
 	pgClient := postgres.MustGetPostgresqlClient(postgres.Config{
 		Host:     os.Getenv("DB_HOST"),
-		Port:     port,
+		Port:     dbPort,
 		Username: os.Getenv("DB_USERNAME"),
 		Password: os.Getenv("DB_PASSWORD"),
 		DbName:   os.Getenv("DB_DATABASE"),
@@ -36,10 +36,14 @@ func main() {
 
 	userRepository := postgres.NewPostgresqlUserRepository(pgClient)
 	teamRepository := postgres.NewPostgresqlTeamRepository(pgClient)
-	teamService := service.NewTeamService(teamRepository)
-	userService := service.NewUserService(userRepository)
+	prRepository := postgres.NewPostgresqlPullRequestRepository(pgClient)
 
-	routes := server.RegisterRoutes(teamService, userService)
+	transactor := postgres.NewPostgresqlTransactor(pgClient)
+	teamService := service.NewTeamService(teamRepository, transactor)
+	userService := service.NewUserService(userRepository)
+	prService := service.NewPullRequestService(prRepository, userRepository, teamRepository, transactor)
+
+	routes := server.RegisterRoutes(teamService, userService, prService)
 	server := server.NewServer(routes)
 
 	done := make(chan bool, 1)
