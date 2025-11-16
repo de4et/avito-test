@@ -65,13 +65,75 @@ func (h *PullRequestHandler) PostPullRequestCreate(ctx context.Context, request 
 }
 
 func (h *PullRequestHandler) PostPullRequestMerge(ctx context.Context, request api.PostPullRequestMergeRequestObject) (api.PostPullRequestMergeResponseObject, error) {
-	panic("NOT IMPLEMENTED")
+	ctx = logger.WithContext(ctx, "pull_request_id", request.Body.PullRequestId)
+	slog.InfoContext(ctx, "Merging pull request")
 
+	pr, err := h.svc.MergePullRequest(ctx, request.Body.PullRequestId)
+	if err != nil {
+		if errors.Is(err, service.ErrPRNotExists) {
+			return api.PostPullRequestMerge404JSONResponse(api.NewError(
+				api.NOTFOUND,
+				api.ErrPRNotExistsMsg,
+			)), nil
+		}
+		return nil, err
+	}
+
+	apiPullRequest := fromDomainPullRequest(pr)
+	return api.PostPullRequestMerge200JSONResponse{
+		Pr: &apiPullRequest,
+	}, nil
 }
 
 func (h *PullRequestHandler) PostPullRequestReassign(ctx context.Context, request api.PostPullRequestReassignRequestObject) (api.PostPullRequestReassignResponseObject, error) {
-	panic("NOT IMPLEMENTED")
+	ctx = logger.WithContext(ctx, "pull_request_id", request.Body.PullRequestId)
+	ctx = logger.WithContext(ctx, "old_reviewer_id", request.Body.OldUserId)
+	slog.InfoContext(ctx, "Reassign pull request")
 
+	pr, replacedBy, err := h.svc.ReassignPullRequest(ctx, request.Body.PullRequestId, request.Body.OldUserId)
+	if err != nil {
+		if errors.Is(err, service.ErrPRNotExists) {
+			return api.PostPullRequestReassign404JSONResponse(api.NewError(
+				api.NOTFOUND,
+				api.ErrPRNotExistsMsg,
+			)), nil
+		}
+
+		if errors.Is(err, service.ErrUserNotExists) {
+			return api.PostPullRequestReassign404JSONResponse(api.NewError(
+				api.NOTFOUND,
+				api.ErrUserNotFoundMsg,
+			)), nil
+		}
+
+		if errors.Is(err, service.ErrMerged) {
+			return api.PostPullRequestReassign409JSONResponse(api.NewError(
+				api.PRMERGED,
+				api.ErrMergedMsg,
+			)), nil
+		}
+
+		if errors.Is(err, service.ErrNotAssigned) {
+			return api.PostPullRequestReassign409JSONResponse(api.NewError(
+				api.NOTASSIGNED,
+				api.ErrNotAssignedMsg,
+			)), nil
+		}
+
+		if errors.Is(err, service.ErrNoCandidate) {
+			return api.PostPullRequestReassign409JSONResponse(api.NewError(
+				api.NOCANDIDATE,
+				api.ErrNoCandidateMsg,
+			)), nil
+		}
+		return nil, err
+	}
+
+	apiPullRequest := fromDomainPullRequest(pr)
+	return api.PostPullRequestReassign200JSONResponse{
+		Pr:         apiPullRequest,
+		ReplacedBy: replacedBy,
+	}, nil
 }
 
 func fromDomainPullRequest(pr domain.PullRequest) api.PullRequest {
@@ -80,6 +142,8 @@ func fromDomainPullRequest(pr domain.PullRequest) api.PullRequest {
 		AuthorId:          pr.AuthorId,
 		PullRequestId:     pr.PullRequestId,
 		PullRequestName:   pr.PullRequestName,
+		MergedAt:          pr.MergedAt,
+		CreatedAt:         pr.CreatedAt,
 		Status:            api.PullRequestStatus(pr.Status),
 	}
 }
