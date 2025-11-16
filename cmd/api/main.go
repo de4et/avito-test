@@ -40,7 +40,7 @@ func main() {
 
 	transactor := postgres.NewPostgresqlTransactor(pgClient)
 	teamService := service.NewTeamService(teamRepository, transactor)
-	userService := service.NewUserService(userRepository)
+	userService := service.NewUserService(userRepository, prRepository, transactor)
 	prService := service.NewPullRequestService(prRepository, userRepository, teamRepository, transactor)
 
 	routes := server.RegisterRoutes(teamService, userService, prService)

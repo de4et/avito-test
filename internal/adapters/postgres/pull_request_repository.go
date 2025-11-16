@@ -34,6 +34,9 @@ var prGetReviewersQuery string
 //go:embed queries/pull_request_update_reviewer.sql
 var prUpdateReviewerQuery string
 
+//go:embed queries/pull_request_get_all_by_user_id.sql
+var prGetAllByUserIDQuery string
+
 type PostgresqlPullRequestRepository struct {
 	client *TxClient
 }
@@ -183,4 +186,31 @@ func (rep *PostgresqlPullRequestRepository) UpdateReviewer(ctx context.Context, 
 
 	fmt.Println("updated from ", from, "to", to)
 	return rep.Get(ctx, pullRequestID)
+}
+
+func (rep *PostgresqlPullRequestRepository) GetAllByUserID(ctx context.Context, userID string) ([]domain.PullRequest, error) {
+	var prs []dto.PullRequestShort
+
+	err := rep.client.SelectContext(
+		ctx,
+		&prs,
+		prGetAllByUserIDQuery,
+		userID,
+	)
+
+	if err != nil {
+		return []domain.PullRequest{}, err
+	}
+
+	arr := make([]domain.PullRequest, len(prs))
+	for i := range prs {
+		arr[i] = domain.PullRequest{
+			AuthorId:        prs[i].AuthorId,
+			PullRequestId:   prs[i].PullRequestId,
+			PullRequestName: prs[i].PullRequestName,
+			Status:          domain.PullRequestStatus(prs[i].Status),
+		}
+	}
+
+	return arr, err
 }

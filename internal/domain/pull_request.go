@@ -12,9 +12,9 @@ type PullRequest struct {
 	Status            PullRequestStatus
 }
 
+type PullRequestStatus string
+
 const (
 	PullRequestStatusMERGED PullRequestStatus = "MERGED"
 	PullRequestStatusOPEN   PullRequestStatus = "OPEN"
 )
-
-type PullRequestStatus string

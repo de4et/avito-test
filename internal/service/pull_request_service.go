@@ -23,6 +23,7 @@ type pullRequestRepository interface {
 	Merge(context.Context, string) (domain.PullRequest, error)
 	Get(context.Context, string) (domain.PullRequest, error)
 	UpdateReviewer(context.Context, string, string, string) (domain.PullRequest, error)
+	GetAllByUserID(context.Context, string) ([]domain.PullRequest, error)
 }
 
 type PullRequestService struct {

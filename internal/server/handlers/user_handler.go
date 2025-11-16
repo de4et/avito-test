@@ -23,7 +23,20 @@ func NewUserHandler(svc *service.UserService) *UserHandler {
 
 // TODO:
 func (h *UserHandler) GetUsersGetReview(ctx context.Context, request api.GetUsersGetReviewRequestObject) (api.GetUsersGetReviewResponseObject, error) {
-	return api.GetUsersGetReview200JSONResponse{}, nil
+	ctx = logger.WithContext(ctx, "user_id", request.Params.UserId)
+	slog.InfoContext(ctx, "Getting review")
+
+	prs, err := h.svc.GetReview(ctx, request.Params.UserId)
+	if err != nil {
+		// no error in specs (only 200 status)
+		return nil, err
+	}
+
+	apiPRs := toPullRequestShorts(prs)
+	return api.GetUsersGetReview200JSONResponse{
+		PullRequests: apiPRs,
+		UserId:       request.Params.UserId,
+	}, nil
 }
 
 func (h *UserHandler) PostUsersSetIsActive(ctx context.Context, request api.PostUsersSetIsActiveRequestObject) (api.PostUsersSetIsActiveResponseObject, error) {
@@ -48,19 +61,6 @@ func (h *UserHandler) PostUsersSetIsActive(ctx context.Context, request api.Post
 	}, nil
 }
 
-// func toDomainUser(api.User) []domain.TeamMember {
-// 	m := make([]domain.TeamMember, len(members))
-// 	for i := range members {
-// 		member := domain.TeamMember{
-// 			IsActive: members[i].IsActive,
-// 			UserId:   members[i].UserId,
-// 			Username: members[i].Username,
-// 		}
-// 		m[i] = member
-// 	}
-// 	return m
-// }
-
 func fromDomainUser(user domain.User) api.User {
 	return api.User{
 		IsActive: user.IsActive,
@@ -68,4 +68,17 @@ func fromDomainUser(user domain.User) api.User {
 		UserId:   user.UserId,
 		Username: user.Username,
 	}
+}
+
+func toPullRequestShorts(prs []domain.PullRequest) []api.PullRequestShort {
+	a := make([]api.PullRequestShort, len(prs))
+	for i := range prs {
+		a[i] = api.PullRequestShort{
+			AuthorId:        prs[i].AuthorId,
+			PullRequestId:   prs[i].PullRequestId,
+			PullRequestName: prs[i].PullRequestName,
+			Status:          api.PullRequestShortStatus(prs[i].Status),
+		}
+	}
+	return a
 }
