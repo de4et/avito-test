@@ -1,36 +1,57 @@
 package server
 
 import (
+	_ "embed"
 	"net/http"
 
-	"github.com/gin-contrib/cors"
+	"github.com/getkin/kin-openapi/openapi3"
+	middleware "github.com/oapi-codegen/gin-middleware"
+
+	"github.com/de4et/avito-test/internal/server/api"
+	"github.com/de4et/avito-test/internal/server/handlers"
+	"github.com/de4et/avito-test/internal/server/middlewares"
+	"github.com/de4et/avito-test/internal/service"
 	"github.com/gin-gonic/gin"
 )
 
-func (s *Server) RegisterRoutes() http.Handler {
-	r := gin.Default()
+//go:embed api/openapi.yml
+var openapiSchema []byte
 
-	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173"}, // Add your frontend URL
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
-		AllowHeaders:     []string{"Accept", "Authorization", "Content-Type"},
-		AllowCredentials: true, // Enable cookies/auth
-	}))
+type server struct {
+	*handlers.UserHandler
+	*handlers.TeamHandler
+	*handlers.PullRequestHandler
+}
 
-	r.GET("/", s.HelloWorldHandler)
+type tmp struct{}
 
-	r.GET("/health", s.healthHandler)
+func RegisterRoutes(teamService *service.TeamService, userService *service.UserService) http.Handler {
+	swagger, err := openapi3.NewLoader().LoadFromData(openapiSchema)
+	if err != nil {
+		panic("couldn't load openapiSchema")
+	}
+
+	r := gin.New()
+
+	r.Use(gin.Recovery())
+	r.Use(middlewares.LogHandler())
+	r.Use(middlewares.ErrorHandler())
+	r.Use(middleware.OapiRequestValidator(swagger))
+
+	api.RegisterHandlers(r, api.NewStrictHandler(
+		server{
+			UserHandler:        handlers.NewUserHandler(userService),
+			TeamHandler:        handlers.NewTeamHandler(teamService),
+			PullRequestHandler: handlers.NewPullRequestHandler(tmp{}),
+		},
+		[]api.StrictMiddlewareFunc{},
+	))
+
+	r.GET("/health", healthHandler)
 
 	return r
 }
 
-func (s *Server) HelloWorldHandler(c *gin.Context) {
-	resp := make(map[string]string)
-	resp["message"] = "Hello World"
-
-	c.JSON(http.StatusOK, resp)
-}
-
-func (s *Server) healthHandler(c *gin.Context) {
-	c.JSON(http.StatusOK, s.db.Health())
+func healthHandler(c *gin.Context) {
+	c.JSON(http.StatusOK, map[string]string{"status": "healthy"})
 }

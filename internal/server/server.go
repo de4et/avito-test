@@ -6,33 +6,22 @@ import (
 	"os"
 	"strconv"
 	"time"
-
-	_ "github.com/joho/godotenv/autoload"
-
-	"avito-test/internal/database"
 )
 
-type Server struct {
-	port int
+const (
+	readTimeout  = 10
+	writeTimeout = 30
+)
 
-	db database.Service
-}
-
-func NewServer() *http.Server {
+func NewServer(routes http.Handler) *http.Server {
 	port, _ := strconv.Atoi(os.Getenv("PORT"))
-	NewServer := &Server{
-		port: port,
 
-		db: database.New(),
-	}
-
-	// Declare Server config
 	server := &http.Server{
-		Addr:         fmt.Sprintf(":%d", NewServer.port),
-		Handler:      NewServer.RegisterRoutes(),
+		Addr:         fmt.Sprintf(":%d", port),
+		Handler:      routes,
 		IdleTimeout:  time.Minute,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 30 * time.Second,
+		ReadTimeout:  readTimeout * time.Second,
+		WriteTimeout: writeTimeout * time.Second,
 	}
 
 	return server

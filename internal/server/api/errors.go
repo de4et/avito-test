@@ -1,7 +1,9 @@
 package api
 
 const (
-	ErrTeamExistsMsg = "team already exists"
+	ErrTeamExistsMsg    = "team already exists"
+	ErrTeamNotExistsMsg = "team not exists"
+	ErrUserNotFoundMsg  = "user not exists"
 )
 
 func NewError(code ErrorResponseErrorCode, msg string) ErrorResponse {
@@ -10,4 +12,3 @@ func NewError(code ErrorResponseErrorCode, msg string) ErrorResponse {
 	e.Error.Message = msg
 	return e
 }
-
